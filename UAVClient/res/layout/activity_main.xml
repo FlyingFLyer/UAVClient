@@ -1,0 +1,126 @@
+<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical" >
+    
+        <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
+
+        <EditText
+            android:id="@+id/ipAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.6"
+            android:hint="输入服务器的IP地址"
+            android:text="uavuav.oicp.net" >
+
+        </EditText>
+
+        <Button
+            android:id="@+id/btnConnectServer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.4"
+            android:text="连接" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnFindDevice"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="查找蓝牙设备" />
+
+    <ListView
+        android:id="@+id/DeviceList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" >
+    </ListView>
+
+    <TextView
+        android:id="@+id/tvInfo"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="蓝牙未开启" />
+
+
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:orientation="vertical" >
+            
+	<TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:text="油门" />
+    <SeekBar 
+        android:id="@+id/skb1"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="25dp"
+        android:layout_marginRight="25dp"
+      	android:background="@android:color/holo_red_light"
+        />
+    
+     <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:text="旋转" />
+     <SeekBar 
+        android:id="@+id/skb3"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="25dp"
+        android:layout_marginRight="25dp"
+      	android:background="@android:color/holo_orange_light"
+        />
+    
+     <ImageButton
+            android:id="@+id/btnStart"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="100dp"
+            android:src="@drawable/ic_media_play"
+            android:text="启动/停止" />
+     
+     <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:text="前后" />
+     <SeekBar 
+        android:id="@+id/skb4"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/holo_purple"
+      	android:layout_marginLeft="25dp"
+        android:layout_marginRight="25dp"
+        />   
+        
+      <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:text="左右" />
+     <SeekBar 
+        android:id="@+id/skb2"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="25dp"
+        android:layout_marginRight="25dp"
+      	android:background="@android:color/holo_green_light"
+        />
+	</LinearLayout>
+</GridLayout>
