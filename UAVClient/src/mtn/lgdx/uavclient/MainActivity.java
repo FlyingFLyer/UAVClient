@@ -56,7 +56,7 @@ public class MainActivity extends Activity implements OnItemClickListener, OnCli
     
     private ArrayAdapter<DeviceList> deviceList;
     
-    private String  info = "";		//
+    private String  deviceName = "";		//蓝牙设备名字
     private String ipaddr = "";		//保存服务器IP地址
     
     private Intent gpsServiceIntent;	//用来启动GPS服务
@@ -65,6 +65,11 @@ public class MainActivity extends Activity implements OnItemClickListener, OnCli
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        btnFindDevice = (Button) findViewById(R.id.btnFindDevice);
+        btnFindDevice.setOnClickListener(this);
+        tvinfo = (TextView) findViewById(R.id.tvInfo);
+        listView = (ListView) findViewById(R.id.DeviceList);
         
         deviceList = new ArrayAdapter<DeviceList>(this, android.R.layout.simple_list_item_1);
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -80,8 +85,6 @@ public class MainActivity extends Activity implements OnItemClickListener, OnCli
 			tvinfo.setText("蓝牙已开启");
 		}
         
-        btnFindDevice = (Button) findViewById(R.id.btnFindDevice);
-        btnFindDevice.setOnClickListener(this);
         listView.setAdapter(deviceList);
         listView.setOnItemClickListener(this);
         
@@ -141,12 +144,11 @@ public class MainActivity extends Activity implements OnItemClickListener, OnCli
 				SendToBluetooth(mConnectThread, remote_cmd);
 				break;
 			case 3:
-				Toast.makeText(MainActivity.this, "无法连接到服务器", Toast.LENGTH_SHORT).show();
-				ShowFailedConnectServerDialog();
+				ShowFailedConnectServerDialog();		//如果连接服务器失败，则显示对话框
 				break;
 			case 4:
                    Toast.makeText(MainActivity.this, "蓝牙设备连接成功", Toast.LENGTH_SHORT).show();
-                   tvinfo.setText(String.format("已经与蓝牙设备%s建立好连接", info));
+                   tvinfo.setText(String.format("已经与蓝牙设备%s建立好连接", deviceName));
                    deviceList.clear();
 				break;
 			default:
@@ -163,7 +165,7 @@ public class MainActivity extends Activity implements OnItemClickListener, OnCli
 	public void onItemClick(AdapterView<?> parent, View view, int position,
 			long id) {
 		DeviceList remoteDeviceList = deviceList.getItem(position);
-		info = remoteDeviceList.getRemoteDeviceName();
+		deviceName = remoteDeviceList.getRemoteDeviceName();
 		
 		bluetoothAdapter.cancelDiscovery(); //停止查找设备
 		AcceptThread aThread = new AcceptThread(bluetoothAdapter, serverName, MY_UUID);		
@@ -171,10 +173,10 @@ public class MainActivity extends Activity implements OnItemClickListener, OnCli
 		ConnectThread cThread = new ConnectThread(remoteDeviceList.getRemoteDevice(), MY_UUID,handler);		
 		cThread.start();		//启动客户端线程
 		mConnectThread = cThread;
+		tvinfo.setText(String.format("正在与%s建立连接...", deviceName));
 		//注册一个Broadcast Receiver来监听BluetoothDevice.ACTION_ACL_DISCONNECTED,即与远程设备建立连接失败
 		registerReceiver(discoveryResult,
                 new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED));
-		tvinfo.setText(String.format("正在与%s建立连接...", info));
 	} 
     
 	/////////////////////////////////////////////////////////////  
@@ -222,7 +224,7 @@ public class MainActivity extends Activity implements OnItemClickListener, OnCli
     	      //找到设备后将其添加到列表显示，包括设备名和设备地址
     	        deviceList.add(new DeviceList(remoteDevice, remoteDeviceName));		
 		}else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
-			tvinfo.setText(String.format("与%s建立连接失败，请重新连接", info));
+			tvinfo.setText(String.format("与%s建立连接失败，请重新连接", deviceName));
 		}
       }
     };
