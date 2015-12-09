@@ -2,208 +2,104 @@ package mtn.lgdx.uavclient;
 
 import java.util.UUID;
 
-import javax.security.auth.PrivateCredentialPermission;
-
 import mtn.lgdx.bluetooth.R;
-import android.R.bool;
-import android.R.integer;
+
+import org.apache.http.Header;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.View.OnLongClickListener;
-import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ListView;
-import android.widget.SeekBar;
-import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.TextHttpResponseHandler;
 
-public class MainActivity extends Activity implements OnItemClickListener, OnSeekBarChangeListener, OnLongClickListener, OnClickListener {
+
+public class MainActivity extends Activity implements OnItemClickListener, OnClickListener {
 	
 	private BluetoothAdapter bluetoothAdapter;
+	private Button btnFindDevice;	//查找设备按钮
+	private TextView tvinfo;		//显示提示信息
+	private ListView listView;		//找到的设备列表
+	private ProgressDialog progDialog = null; //
 	
-	private EditText ipAddress;			//IP��ַ�����
-	private Button btnConnectServer;	//���ӷ�����
-	
-	private Button btnFindDevice;	//�����豸��ť
-	private TextView tvinfo;		//��ʾ��ʾ��Ϣ
-	private ListView listView;		//�ҵ����豸�б�
-	
-	private ImageButton btnStartButton;		//������ť
-	
-	private SeekBar skb_accelerator;		//����
-	private SeekBar skb_FB;					//ǰ������
-	private SeekBar skb_RL;					//��ת��ת
-	private SeekBar skb_rotate;				//��ת
-	
-    protected static final String TAG = "BLUETOOTH";
-    protected static final int DISCOVERY_REQUEST = 1;
-    
-    private static final String IP_DNS = "uavuav.oicp.net";		//����������
-	private static final int PORT = 1111;						//������Ĭ�϶˿ں�
-    
-    private final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");	//�Դ��ڽ��в�����UUID
-    private final String serverName  = "bluetoothserver";
-    
-    private  Handler handler = null;
-    
-    private String info = "";		//������״̬��ʾ��Ϣ
+	private static final String URL = "http://uavuav.oicp.net/ip.php";
+	private static final String TAG = "UAVClient";
+	private static final String serverName  = "bluetoothserver";
+	private static final int DISCOVERY_REQUEST = 1;
+	private static final int PORT = 1111;				//服务器程序默认端口号
+    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");	//对串口操作的UUID
     
     private ConnectThread mConnectThread = null;
     private ConnectServer connectServer = null;
     
     private ArrayAdapter<DeviceList> deviceList;
     
-    private static final int ACCELERATE_MAX 		= 1523;			//���ŵ����ֵ
-    private static final int RIGHT_LEFT_MAX 		= 1523;			//���ҵ����ֵ
-    private static final int ROTATE_MAX 			= 1523;			//��ת�����ֵ
-    private static final int FORWARD_BACK_MAX	= 1523;			//ǰ������ֵ
+    private String  info = "";		//
+    private String ipaddr = "";		//保存服务器IP地址
     
-    private static final int ACCELERATE_MIN 		= 523;			//���ŵ���Сֵ
-    private static final int RIGHT_LEFT_MIN 		= 523;			//���ҵ���Сֵ
-    private static final int ROTATE_MIN 			= 523;			//��ת����Сֵ
-    private static final int FORWARD_BACK_MIN	= 523;			//ǰ�����Сֵ
-    
-    private static final int SEEKBAR_MAX = 1000;					//���������ֵ
-    
-    private String ipaddr = "";		//���������IP��ַ������
-    
-    SharedPreferences preferences;
-    SharedPreferences.Editor preferences_editor;
-    
-    private Intent gpsServiceIntent;	//��������GPS����
+    private Intent gpsServiceIntent;	//用来启动GPS服务
 	
     @SuppressLint("HandlerLeak") @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
-        
-        ipAddress = (EditText) findViewById(R.id.ipAddress);
-        btnConnectServer = (Button) findViewById(R.id.btnConnectServer);
-        btnConnectServer.setOnClickListener(this);
-        
-        btnFindDevice = (Button) findViewById(R.id.btnFindDevice);
-        btnFindDevice.setOnClickListener(this);
-      
-        tvinfo = (TextView) findViewById(R.id.tvInfo);
-        listView = (ListView) findViewById(R.id.DeviceList);
-        
-        btnStartButton = (ImageButton) findViewById(R.id.btnStart);
-        btnStartButton.setOnLongClickListener(this);
-        btnStartButton.setOnClickListener(this);
-  
-        skb_accelerator = (SeekBar) findViewById(R.id.skb1);
-        skb_FB 			= (SeekBar) findViewById(R.id.skb4);
-        skb_RL			= (SeekBar) findViewById(R.id.skb2);
-        skb_rotate		= (SeekBar) findViewById(R.id.skb3);
-        
-        skb_accelerator.setMax(SEEKBAR_MAX);
-        skb_accelerator.setProgress(SEEKBAR_MAX/2);
-        skb_RL.setMax(SEEKBAR_MAX);
-        skb_RL.setProgress(SEEKBAR_MAX/2);
-        skb_rotate.setMax(SEEKBAR_MAX);
-        skb_rotate.setProgress(SEEKBAR_MAX/2);
-        skb_FB.setMax(SEEKBAR_MAX);
-        skb_FB.setProgress(SEEKBAR_MAX/2);
-        
-        skb_accelerator.setOnSeekBarChangeListener(this);
-        skb_FB.setOnSeekBarChangeListener(this);
-        skb_RL.setOnSeekBarChangeListener(this);
-        skb_rotate.setOnSeekBarChangeListener(this);
-        
-        setEnable(false);		//���û�������������豸������ü��������ؼ�
         
         deviceList = new ArrayAdapter<DeviceList>(this, android.R.layout.simple_list_item_1);
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        //�������δ�����������
+        //如果蓝牙未开启则打开蓝牙
         if (!bluetoothAdapter.isEnabled()) {
             if (bluetoothAdapter.enable()) {
-    			tvinfo.setText("�����ѿ���");
+    			tvinfo.setText("蓝牙已开启");
     		}else {
-    			tvinfo.setText("����δ����,���ȿ�������");
+    			tvinfo.setText("蓝牙未开启,请先开启蓝牙");
     		}
             
 		}else {
-			tvinfo.setText("�����ѿ���");
+			tvinfo.setText("蓝牙已开启");
 		}
         
+        btnFindDevice = (Button) findViewById(R.id.btnFindDevice);
+        btnFindDevice.setOnClickListener(this);
         listView.setAdapter(deviceList);
         listView.setOnItemClickListener(this);
         
-        handler = new Handler(){
-            @Override
-            public void handleMessage(Message msg){
-                super.handleMessage(msg);
-                
-                int remote_cmd = 0;
-                
-                switch (msg.what) {
-                case 1:
-					Toast.makeText(MainActivity.this, "�ɹ����ӵ�������", Toast.LENGTH_SHORT).show();
-					break;
-				case 2:
-					//��ȡ�ӷ����������������ݣ�Ȼ���͸������豸
-					remote_cmd = msg.getData().getInt("REMOTE_CMD");
-					SendToBluetooth(mConnectThread, remote_cmd);
-					break;
-				case 3:
-					Toast.makeText(MainActivity.this, "�޷����ӵ�������", Toast.LENGTH_SHORT).show();
-					break;
-				case 4:
-	                   Toast.makeText(MainActivity.this, "�����豸���ӳɹ�", Toast.LENGTH_SHORT).show();
-	                   tvinfo.setText(String.format("��%s������", info));
-	                   deviceList.clear();
-	                   //setEnable(true);
-					break;
-				default:
-					break;
-				}
-            }
-        };
-        
-        preferences = getSharedPreferences("ipaddr", Context.MODE_PRIVATE);
-        preferences_editor = preferences.edit();
-        if (preferences != null) {
-			ipaddr = preferences.getString("ipaddr", null);
-			ipAddress.setText(ipaddr);
-		}
-        
         gpsServiceIntent = new Intent(this,GpsService.class);
-		startService(gpsServiceIntent);		//����GPS����
+		startService(gpsServiceIntent);		//启动GPS服务
+		
+		GetServerIP();		//向服务器发送http请求获取服务器IP地址，然后根据IP地址连接服务器程序
     }
     
     @Override
     protected void onDestroy() {
     	if (mConnectThread!=null) {
-    		mConnectThread.cancel();		//ֹͣ�����߳�
+    		mConnectThread.cancel();		//停止蓝牙线程
 		}
     	if (bluetoothAdapter!=null) {
-    		bluetoothAdapter.disable();		//�ر�����
+    		bluetoothAdapter.disable();		//关闭蓝牙
 		}
-    	stopService(gpsServiceIntent);		//ֹͣGPS����
+    	stopService(gpsServiceIntent);		//停止GPS服务
     	
     	super.onDestroy();
     }
@@ -229,25 +125,56 @@ public class MainActivity extends Activity implements OnItemClickListener, OnSee
         return super.onOptionsItemSelected(item);
     }
     
+    @SuppressLint("HandlerLeak")
+	private  Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg){
+            super.handleMessage(msg);
+            int remote_cmd = 0;
+            switch (msg.what) {
+            case 1:
+				Toast.makeText(MainActivity.this, "成功连接到服务器", Toast.LENGTH_SHORT).show();
+				break;
+			case 2:
+				//提取从服务器发过来的数据，然后发送给蓝牙设备
+				remote_cmd = msg.getData().getInt("REMOTE_CMD");
+				SendToBluetooth(mConnectThread, remote_cmd);
+				break;
+			case 3:
+				Toast.makeText(MainActivity.this, "无法连接到服务器", Toast.LENGTH_SHORT).show();
+				ShowFailedConnectServerDialog();
+				break;
+			case 4:
+                   Toast.makeText(MainActivity.this, "蓝牙设备连接成功", Toast.LENGTH_SHORT).show();
+                   tvinfo.setText(String.format("已经与蓝牙设备%s建立好连接", info));
+                   deviceList.clear();
+				break;
+			default:
+				break;
+			}
+        }
+    };
+    
     /**
-     * �豸�б�ĵ�����Ӧ����������б�������￪ʼ���豸��������
+     * 设备列表的单击响应函数，点击列表项，开始与该蓝牙设备建立连接
     */
+	@SuppressLint("HandlerLeak")
 	@Override
 	public void onItemClick(AdapterView<?> parent, View view, int position,
 			long id) {
 		DeviceList remoteDeviceList = deviceList.getItem(position);
 		info = remoteDeviceList.getRemoteDeviceName();
 		
-		bluetoothAdapter.cancelDiscovery(); //ֹͣ�����豸
+		bluetoothAdapter.cancelDiscovery(); //停止查找设备
 		AcceptThread aThread = new AcceptThread(bluetoothAdapter, serverName, MY_UUID);		
-		aThread.start();		//�����������߳�
+		aThread.start();		//启动服务器线程
 		ConnectThread cThread = new ConnectThread(remoteDeviceList.getRemoteDevice(), MY_UUID,handler);		
-		cThread.start();		//�����ͻ����߳�
+		cThread.start();		//启动客户端线程
 		mConnectThread = cThread;
-		//ע��һ��Broadcast Receiver������BluetoothDevice.ACTION_ACL_DISCONNECTED,����Զ���豸��������ʧ��
+		//注册一个Broadcast Receiver来监听BluetoothDevice.ACTION_ACL_DISCONNECTED,即与远程设备建立连接失败
 		registerReceiver(discoveryResult,
                 new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED));
-		tvinfo.setText(String.format("������%s����������...", info));
+		tvinfo.setText(String.format("正在与%s建立连接...", info));
 	} 
     
 	/////////////////////////////////////////////////////////////  
@@ -258,26 +185,24 @@ public class MainActivity extends Activity implements OnItemClickListener, OnSee
     	 
     	registerReceiver(discoveryResult,
                        new IntentFilter(BluetoothDevice.ACTION_FOUND));
-//    	registerReceiver(discoveryResult,
-//                new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));	//
     	if (bluetoothAdapter.isEnabled()) {
     		
 			if (!bluetoothAdapter.isDiscovering()) {
-			      bluetoothAdapter.startDiscovery();	//��ʼ�����豸
-			      tvinfo.setText("���ڲ����豸...");
+			      bluetoothAdapter.startDiscovery();	//开始查找设备
+			      tvinfo.setText("正在查找设备...");
 			}else {
-				tvinfo.setText("�Ѿ��ڲ����豸�����Ժ�...");
+				tvinfo.setText("已经在查找设备，请稍后");
 				return;
 			}
 		}
     	else {
-    		tvinfo.setText("������δ�������뿪������������...");
+    		tvinfo.setText("蓝牙还未开启，请开启蓝牙后重试");
     		return;
 		}
     }
 
     /**
-     * �㲥����
+     * 广播接收
     */
     private final BroadcastReceiver discoveryResult = new BroadcastReceiver() {
       @Override
@@ -285,7 +210,7 @@ public class MainActivity extends Activity implements OnItemClickListener, OnSee
     	  
     	  String action = intent.getAction();
     	  
-    	  //����ҵ�Զ���豸
+    	  //如果找到远程设备
     	  if (BluetoothDevice.ACTION_FOUND.equals(action)) {
         	  
     	        String remoteDeviceName = 
@@ -294,155 +219,141 @@ public class MainActivity extends Activity implements OnItemClickListener, OnSee
     	        BluetoothDevice remoteDevice =  
     	          intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
     	        
-    	      //�ҵ��豸������ӵ��б���ʾ�������豸�����豸��ַ
+    	      //找到设备后将其添加到列表显示，包括设备名和设备地址
     	        deviceList.add(new DeviceList(remoteDevice, remoteDeviceName));		
 		}else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
-			tvinfo.setText(String.format("��%s��������ʧ�ܣ�����������", info));
+			tvinfo.setText(String.format("与%s建立连接失败，请重新连接", info));
 		}
       }
     };
     
-    /**
-     * �÷�������enable/disable�⼸���ؼ���ֻ�����������豸�����������Ժ���Щ�ؼ��ſ���
-    */
-    private void setEnable(boolean enabled){
-    	skb_accelerator.setEnabled(enabled);
-    	skb_RL.setEnabled(enabled);
-    	skb_FB.setEnabled(enabled);
-    	skb_rotate.setEnabled(enabled);
-    	btnStartButton.setEnabled(enabled);
-    }
-    
-    /**
-     * SeekBar.OnSeekBarChangeListener 
-     */
-	@Override
-	public void onProgressChanged(SeekBar seekBar, int progress,
-			boolean fromUser) {
-		int cmd_data = 0;
-		int cmd_type = 0;
-		switch (seekBar.getId()) {
-		case R.id.skb1:		//����
-			cmd_type = UAVCmd.ACCELERATOR;
-			cmd_data = (int)(ACCELERATE_MIN+progress);
-			break;
-		case R.id.skb2:		//����
-			cmd_type = UAVCmd.RIGHT_LEFT;
-			cmd_data = (int)(RIGHT_LEFT_MIN+progress);
-			break;	
-		case R.id.skb3:		//��ת
-			cmd_type = UAVCmd.ROTATE;
-			cmd_data = (int)(ROTATE_MIN+progress);
-			break;
-		case R.id.skb4:		//ǰ��
-			cmd_type = UAVCmd.FORWARD_BACK;
-			cmd_data = (int)(FORWARD_BACK_MIN+progress);
-			break;
-		default:
-			break;
-		}
-		SendToBluetooth(mConnectThread, UAVCmd.FormatCmd(cmd_type, cmd_data));
-
-	}
-
-	@Override
-	public void onStartTrackingTouch(SeekBar seekBar) {
-		
-	}
-
-	@Override
-	public void onStopTrackingTouch(SeekBar seekBar) {
-		
-		int cmd_type = 0;
-		seekBar.setProgress(seekBar.getMax()/2);
-		switch (seekBar.getId()) {
-		case R.id.skb1:		//����
-			cmd_type = UAVCmd.ACCELERATOR;
-			break;
-		case R.id.skb2:		//����
-			cmd_type = UAVCmd.RIGHT_LEFT;
-			break;
-		case R.id.skb3:		//��ת
-			cmd_type = UAVCmd.ROTATE;
-			break;
-		case R.id.skb4:		//ǰ��
-			cmd_type = UAVCmd.FORWARD_BACK;
-			break;
-		default:
-			break;
-		}
-		SendToBluetooth(mConnectThread, UAVCmd.FormatCmd(cmd_type, UAVCmd.MEDIAN));
-	}
-
 	/**
-	 * ��ť�����¼���������
-	 */
-	@Override
-	public boolean onLongClick(View v) {
-		
-		switch (v.getId()) {
-		case R.id.btnStart:				//�������˻���������
-			SendStartCmd();
-			//SendToBluetooth(mConnectThread, UAVCmd.START<<12);
-			break;
-		default:
-			break;
-		}
-		return true;
-	}
-	
-	/**
-	 * ��ť����¼���������
+	 * 
 	 */
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
-		case R.id.btnStart:				
-			
-			break;
-		case R.id.btnConnectServer:			//���ӷ�����
-			connectServer = new ConnectServer(ipAddress.getText().toString(), PORT, handler);	
-			connectServer.start();
-			//����IP��ַ
-			preferences_editor.putString("ipaddr", ipAddress.getText().toString());
-			preferences_editor.commit();
-			break;
 		case R.id.btnFindDevice:
-			startDiscovery();				//��ʼɨ�������豸
+			startDiscovery();				//开始扫描蓝牙设备
 			break;
 		default:
 			break;
 		}
 	}
 	
-	
 	private void SendToBluetooth(ConnectThread thread,int cmd){
-		
 		if (thread != null) {
 			thread.write(cmd);
-		}else {
-			Toast.makeText(MainActivity.this, "�����߳�δ����", Toast.LENGTH_SHORT).show();
 		}
 	}
 	
-	private void SendStartCmd(){
-		if (mConnectThread != null) {
-			mConnectThread.write(UAVCmd.START<<12);
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						Thread.sleep(500);
-						mConnectThread.write(UAVCmd.START_DELAY<<12);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-			}).start();
-		}else {
-			Toast.makeText(MainActivity.this, "�����߳�δ����", Toast.LENGTH_SHORT).show();
-			return ;
+	/**
+	 * 显示进度框
+	 */
+	private void showProgressDialog() {
+		if (progDialog == null)
+			progDialog = new ProgressDialog(this);
+		progDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+		progDialog.setIndeterminate(false);
+		progDialog.setCancelable(false);
+		progDialog.setMessage("正在查询服务器的IP地址");
+		progDialog.show();
+	}
+
+	/**
+	 * 隐藏进度框
+	 */
+	private void dissmissProgressDialog() {
+		if (progDialog != null) {
+			progDialog.dismiss();
 		}
+	}
+
+	/**
+	 * 向服务器发送http请求，查询服务器的IP地址。发送http请求使用了开源框架android-async-http
+	 */
+	private void GetServerIP() {
+		
+		showProgressDialog();	
+
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(URL, new TextHttpResponseHandler() {		//向服务器发送http请求，查询服务器的IP地址
+
+			@Override
+			public void onSuccess(int arg0, Header[] arg1, String response) {
+				dissmissProgressDialog();
+				ipaddr = response;			//服务器返回的IP地址赋给该变量
+				ConnectToServer();			//连接服务器
+			}
+
+			@Override
+			public void onFailure(int arg0, Header[] arg1, String arg2,
+					Throwable arg3) {
+				dissmissProgressDialog();
+				ShowFailedGetAddrDialog();
+			}
+		});
+
+	}
+
+	/**
+	 * 获取服务器IP地址失败时显示该对话框
+	 */
+	private void ShowFailedGetAddrDialog() {
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage("无法获取服务器地址！");
+
+		builder.setPositiveButton("重试",
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						GetServerIP();		//重新向服务器发送请求获取其IP地址
+					}
+				});
+		builder.setNegativeButton("退出",
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						finish();		//退出程序
+					}
+				});
+		AlertDialog dialog = builder.create();
+		dialog.show();
+	}
+
+	/**
+	 * 连接服务器失败时显示该对话框
+	 */
+	private void ShowFailedConnectServerDialog() {
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage("无法连接到服务器！");
+
+		builder.setPositiveButton("重试",
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						ConnectToServer();		//重新尝试连接服务器
+					}
+				});
+		builder.setNegativeButton("退出",
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						finish();			//退出程序
+					}
+				});
+		AlertDialog dialog = builder.create();
+		dialog.show();
+	}
+	
+	/**
+	 * 创建连接服务器线程去连接服务器
+	 */
+	private void ConnectToServer() {
+		connectServer = new ConnectServer(ipaddr, PORT,	handler);
+		connectServer.start();
 	}
 }
 

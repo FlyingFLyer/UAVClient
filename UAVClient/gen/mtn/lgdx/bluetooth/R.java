@@ -29,17 +29,10 @@ public final class R {
         public static final int ic_media_play=0x7f020004;
     }
     public static final class id {
-        public static final int DeviceList=0x7f090003;
-        public static final int action_settings=0x7f09000a;
-        public static final int btnConnectServer=0x7f090001;
-        public static final int btnFindDevice=0x7f090002;
-        public static final int btnStart=0x7f090007;
-        public static final int ipAddress=0x7f090000;
-        public static final int skb1=0x7f090005;
-        public static final int skb2=0x7f090009;
-        public static final int skb3=0x7f090006;
-        public static final int skb4=0x7f090008;
-        public static final int tvInfo=0x7f090004;
+        public static final int DeviceList=0x7f090001;
+        public static final int action_settings=0x7f090003;
+        public static final int btnFindDevice=0x7f090000;
+        public static final int tvInfo=0x7f090002;
     }
     public static final class layout {
         public static final int activity_main=0x7f030000;
